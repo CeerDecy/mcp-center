@@ -12,6 +12,7 @@ pub struct ListAllRequest {
     use_raw_endpoint: Option<bool>,
     page_size: Option<i64>,
     page_num: Option<i64>,
+    query: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -61,7 +62,7 @@ pub async fn list_all(
     // select mcp servers
     let mut servers = if page_size > 0 && page_num > 0 {
         mcp_handler
-            .list_with_limit(page_size, (page_num - 1) * page_size)
+            .list_with_limit(request.query, page_size, (page_num - 1) * page_size)
             .await
             .map_err(|e| {
                 tracing::error!("Failed to list mcp servers {}", e);

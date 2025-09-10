@@ -19,12 +19,24 @@ impl McpDBHandler {
 
     pub async fn list_with_limit(
         &self,
+        name: Option<String>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<McpServers>, sqlx::Error> {
-        sqlx::query_as::<_, McpServers>(
-            "SELECT * FROM tb_mcp_servers ORDER BY id LIMIT $1 OFFSET $2",
-        )
+        let query = match name {
+            Some(name) => {
+                sqlx::query_as::<_, McpServers>(
+                    "SELECT * FROM tb_mcp_servers WHERE $1 ORDER BY id LIMIT $2 OFFSET $3",
+                ).bind(name)
+            }
+            None => {
+                sqlx::query_as::<_, McpServers>(
+                    "SELECT * FROM tb_mcp_servers ORDER BY id LIMIT $1 OFFSET $2",
+                )
+            }
+        };
+        
+        query
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.client.pool)
