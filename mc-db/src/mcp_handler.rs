@@ -1,6 +1,5 @@
 use crate::DBClient;
 use crate::model::McpServers;
-use serde_json::Value;
 use std::sync::Arc;
 
 pub struct McpDBHandler {
@@ -135,7 +134,7 @@ impl McpDBHandler {
             .bind(server.create_from)
             .bind(server.description)
             .bind(server.disabled)
-            .bind(&server.id)
+            .bind(server.id)
             .fetch_one(&self.client.pool)
             .await?;
 

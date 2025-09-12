@@ -1,11 +1,12 @@
+use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::Json;
+use mc_common::app::AppState;
+use mc_common::app::event::Event;
+use mc_common::router::response::{JsonResponse, Response};
+use mc_db::model::{CreateFrom, McpServers};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use mc_common::app::{AppState, Response};
-use mc_common::app::event::Event;
-use mc_db::model::{CreateFrom, McpServers};
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct McpRegisterRequest {
@@ -21,12 +22,12 @@ pub struct McpRegisterRequest {
 pub async fn register_mcp_server(
     State(state): State<AppState>,
     Json(server): Json<McpRegisterRequest>,
-) -> Result<Json<Response>, (StatusCode, String)> {
+) -> Result<JsonResponse, (StatusCode, JsonResponse)> {
     let mcp_handler = match &state.handlers().mcp_handler {
         None => {
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Can't get MCP handler not found".to_string(),
+                Response::error("Can't get MCP handler not found"),
             ));
         }
         Some(handler) => handler,
@@ -56,7 +57,7 @@ pub async fn register_mcp_server(
             tracing::error!("Failed to create mcp server {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to create mcp server".to_string(),
+                Response::error("Failed to create mcp server"),
             )
         })?;
 
@@ -71,13 +72,5 @@ pub async fn register_mcp_server(
         tracing::info!("MCP server {} registered", server.name);
     });
 
-    let data = serde_json::to_value(res).map_err(|e| {
-        tracing::error!("Failed to parse mcp servers {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal server error".to_string(),
-        )
-    })?;
-
-    Ok(Json(Response::new(Some(data))))
+    Ok(Response::success(res))
 }

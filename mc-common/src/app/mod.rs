@@ -1,4 +1,5 @@
 pub mod cache;
+pub mod config;
 pub mod event;
 
 use crate::app::cache::Cache;
@@ -8,7 +9,6 @@ use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::Client;
 use hyper_util::client::legacy::connect::HttpConnector;
 use mc_db::DBClient;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
 
@@ -72,35 +72,6 @@ impl HandlerManager {
 
     pub fn with_api_keys_handler(mut self) -> Self {
         self.api_keys_handler = Some(Arc::new(mc_db::ApiKeyDBHandler::new(self.db.clone())));
-        self
-    }
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct Response {
-    data: Option<serde_json::Value>,
-    code: u16,
-    message: String,
-}
-
-impl Response {
-    pub fn new(data: Option<serde_json::Value>) -> Self {
-        Self {
-            data,
-            code: 200,
-            message: "ok".to_string(),
-        }
-    }
-
-    #[allow(dead_code)]
-    fn with_code(mut self, code: u16) -> Self {
-        self.code = code;
-        self
-    }
-
-    #[allow(dead_code)]
-    fn with_message(mut self, message: String) -> Self {
-        self.message = message;
         self
     }
 }

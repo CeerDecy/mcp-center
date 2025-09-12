@@ -1,19 +1,15 @@
-use crate::config::{AppConfig, McpRegistry};
 use crate::reverse_proxy;
-use axum::extract::{Request, State};
-use axum::middleware;
-use axum::middleware::Next;
-use axum::response::Response;
-use http::StatusCode;
+use axum::Router;
 use hyper_rustls::HttpsConnectorBuilder;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 use mc_booter::app::application::Application;
 use mc_common::app::cache::Cache;
+use mc_common::app::config::{AppConfig, McpRegistry};
 use mc_common::app::event::Event;
 use mc_common::app::{AppState, HandlerManager};
-use mc_common::router;
-use mc_common::router::RouterHandler;
+use mc_common::router::RouterBuilder;
+use mc_common::router::auth::Permission;
 use mc_db::DBClient;
 use std::error::Error;
 use std::path::PathBuf;
@@ -69,16 +65,27 @@ impl McpCenterServer {
     ) -> Result<(), Box<dyn Error>> {
         let state = self.state.clone().unwrap();
 
-        let builder = router::RouterBuilder::<AppState>::new()
-            .with_register(reverse_proxy::register_router(
-                state.https_client.clone(),
-                state.mcp_cache.clone(),
-            ))
-            .with_register(mc_registry::register_router())
-            .with_register(mc_token::register_router())
-            .with_layer(layer_authorization(self.config.clone(), state.clone()));
+        // let builder = router::RouterBuilder::<AppState>::new()
+        //     .with_register(reverse_proxy::register_router(
+        //         state.https_client.clone(),
+        //         state.mcp_cache.clone(),
+        //     ))
+        // .with_register()
+        // .with_register(mc_token::register_router())
+        //     .with_layer(authorization::layer_authorization(self.config.clone(), state.clone(),Permission::ADMIN | Permission::TOKEN));
+        //
+        // let app = builder.build(state);
 
-        let app = builder.build(state);
+        let app = Router::new();
+
+        let builder = RouterBuilder::new(app)
+            .with_register(reverse_proxy::register_router(
+                Permission::ADMIN | Permission::TOKEN,
+            ))
+            .with_register(mc_registry::register_router(Permission::ADMIN))
+            .with_register(mc_token::register_router(Permission::ADMIN));
+
+        let app = builder.build(state, self.config.clone());
 
         // starting axum service
         runtime.block_on(async move {
@@ -198,67 +205,4 @@ fn build_external_api_registry(url: String, token: Option<String>) -> Registry {
         authorization: token,
     };
     Registry::ExternalAPI(config)
-}
-
-fn layer_authorization(config: AppConfig, state: AppState) -> RouterHandler<AppState> {
-    Box::new(move |router| {
-        router.layer(middleware::from_fn_with_state(
-            (config.clone(), state.clone()),
-            authorization,
-        ))
-    })
-}
-
-async fn authorization(
-    State((config, state)): State<(AppConfig, AppState)>,
-    req: Request,
-    next: Next,
-) -> Result<Response, (StatusCode, String)> {
-    if req.uri() == "/api/user/admin/login" {
-        return Ok(next.run(req).await);
-    }
-
-    if let Some(key) = req.headers().get(http::header::AUTHORIZATION) {
-        let mut apikey = key.to_str().unwrap();
-        apikey = apikey.strip_prefix("Bearer ").unwrap_or(apikey);
-
-        tracing::debug!("Authorization header set to: {apikey}");
-
-        if apikey == config.mcp_center.admin_token.as_str() {
-            return Ok(next.run(req).await);
-        }
-        let handler = match &state.handlers().api_keys_handler {
-            None => {
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    String::from("no api key handler found"),
-                ));
-            }
-            Some(handler) => handler,
-        };
-
-        let res = match handler.find(apikey).await {
-            Ok(_) => Ok(next.run(req).await),
-            Err(sqlx::Error::RowNotFound) => {
-                tracing::error!("The API key is not permitted.");
-                Err((
-                    StatusCode::UNAUTHORIZED,
-                    String::from("The API key is not permitted."),
-                ))
-            }
-            Err(err) => {
-                tracing::error!("failed to select api key: {}", err);
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    String::from("Failed to select api key"),
-                ))
-            }
-        };
-        return res;
-    }
-    tracing::error!("Authorization header not found");
-    Err((
-        StatusCode::UNAUTHORIZED,
-        String::from("Authorization header not found"),
-    ))
 }

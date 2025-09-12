@@ -1,11 +1,9 @@
-use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
-use mc_common::app::event::Event;
-use mc_common::app::{AppState, Response};
-use mc_db::model::{CreateFrom, McpServers, SettingKey};
+use mc_common::app::AppState;
+use mc_common::router::response::{JsonResponse, Response};
+use mc_db::model::{McpServers, SettingKey};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Deserialize, Debug)]
 pub struct ListAllRequest {
@@ -24,11 +22,13 @@ pub struct ListAllResponse {
 pub async fn list_all(
     State(state): State<AppState>,
     Query(request): Query<ListAllRequest>,
-) -> Result<Json<Response>, (StatusCode, String)> {
+) -> Result<JsonResponse, (StatusCode, JsonResponse)> {
     if request.page_size.is_some() ^ request.page_num.is_some() {
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Both page_size and page_num must be provided together or omitted together".to_string(),
+            Response::error(
+                "Both page_size and page_num must be provided together or omitted together",
+            ),
         ));
     }
 
@@ -39,7 +39,7 @@ pub async fn list_all(
         None => {
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Can't get MCP handler not found".to_string(),
+                Response::error("Can't get MCP handler not found"),
             ));
         }
         Some(handler) => handler,
@@ -49,7 +49,7 @@ pub async fn list_all(
         None => {
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Can't get MCP handler not found".to_string(),
+                Response::error("Can't get system settings handler not found"),
             ));
         }
         Some(handler) => handler,
@@ -68,7 +68,7 @@ pub async fn list_all(
                 tracing::error!("Failed to list mcp servers {}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to list mcp servers".to_string(),
+                    Response::error("Failed to list mcp servers"),
                 )
             })?
     } else {
@@ -76,7 +76,7 @@ pub async fn list_all(
             tracing::error!("Failed to list mcp servers {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to list mcp servers".to_string(),
+                Response::error("Failed to list mcp servers"),
             )
         })?
     };
@@ -95,17 +95,11 @@ pub async fn list_all(
         tracing::error!("Failed to count mcp servers {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to count mcp servers".to_string(),
+            Response::error("Failed to count mcp servers"),
         )
     })?;
 
-    let data = serde_json::to_value(ListAllResponse { servers, count }).map_err(|e| {
-        tracing::error!("Failed to parse mcp servers {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal server error".to_string(),
-        )
-    })?;
+    tracing::info!("MCP servers found: {}", count);
 
-    Ok(Json(Response::new(Some(data))))
+    Ok(Response::success(ListAllResponse { servers, count }))
 }

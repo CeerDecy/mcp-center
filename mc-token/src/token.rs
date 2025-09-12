@@ -1,7 +1,8 @@
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
-use mc_common::app::{AppState, Response};
+use mc_common::app::AppState;
+use mc_common::router::response::{JsonResponse, Response};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -19,11 +20,11 @@ pub struct AdminLoginResponse {
 pub async fn admin_login(
     State(_state): State<AppState>,
     Json(request): Json<AdminLoginRequest>,
-) -> Result<Json<Response>, (StatusCode, String)> {
+) -> Result<JsonResponse, (StatusCode, JsonResponse)> {
     if request.username != "admin" {
         return Err((
             StatusCode::UNAUTHORIZED,
-            String::from("only admin can login"),
+            Response::common(StatusCode::UNAUTHORIZED, "only admin can login"),
         ));
     }
     let env_token = std::env::var("MCP_ADMIN_TOKEN").unwrap_or_else(|e| {
@@ -38,27 +39,17 @@ pub async fn admin_login(
                 env_token,
                 token
             );
-            return Err((StatusCode::UNAUTHORIZED, String::from("Invalid token")));
-        }
-        let response = AdminLoginResponse {
-            code: Some(u16::from(StatusCode::OK)),
-            message: Some(String::from("successfully logged in")),
-        };
-
-        let data = serde_json::to_value(response).map_err(|e| {
-            tracing::error!("Failed to parse response {}", e);
-            (
+            return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_string(),
-            )
-        })?;
-
-        return Ok(Json(Response::new(Some(data))));
+                Response::error("Invalid token"),
+            ));
+        }
+        return Ok(Response::success(""));
     }
 
     tracing::warn!("only support admin token in current version");
     Err((
-        StatusCode::UNAUTHORIZED,
-        String::from("only support admin token in current version"),
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Response::error("only support admin token in current version"),
     ))
 }
