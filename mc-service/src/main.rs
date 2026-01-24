@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("info,{}=debug", env!("CARGO_CRATE_NAME")).into()),
+                .unwrap_or_else(|_| "info".to_string().into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();

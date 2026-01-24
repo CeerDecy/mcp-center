@@ -75,7 +75,8 @@ POST /api/registry/mcp-server
   "description": "Example MCP server",
   "extra": {
     "custom_field": "value"
-  }
+  },
+  "disabled": false
 }
 ```
 
@@ -86,6 +87,48 @@ POST /api/registry/mcp-server
 - `transport_type`: Transport type, supports "sse" or "streamable" (required)
 - `description`: Server description (required)
 - `extra`: Additional information, JSON object (optional)
+
+**Response**:
+```json
+{
+  "id": "uuid",
+  "name": "example-server",
+  "tag": "1.0.0",
+  "endpoint": "http://127.0.0.1:8080/sse",
+  "transport_type": "sse",
+  "description": "Example MCP server",
+  "extra": {
+    "custom_field": "value"
+  },
+  "disabled": false,
+  "created_at": "2024-01-01T00:00:00",
+  "updated_at": "2024-01-01T00:00:00",
+  "deleted_at": null
+}
+```
+
+#### Update MCP Server
+
+```http
+PUT /api/registry/mcp-server/{mcp_name}
+```
+
+**Path Parameters**:
+- `mcp_name`: MCP server name
+
+**Request Body**:
+```json
+{
+  "tag": "1.0.0",
+  "endpoint": "http://127.0.0.1:8080/sse",
+  "transport_type": "sse",
+  "description": "Example MCP server",
+  "extra": {
+    "custom_field": "value"
+  }
+}
+```
+`endpoint` is optional; when omitted or empty, the server keeps the existing endpoint.
 
 **Response**:
 ```json
@@ -180,4 +223,3 @@ curl -X GET http://localhost:5432/api/registry/mcp-server \
 curl -X GET http://localhost:5432/proxy/connect/my-mcp-server/1.0.0 \
   -H "Authorization: Bearer your-api-key"
 ```
-

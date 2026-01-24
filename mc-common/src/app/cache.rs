@@ -1,6 +1,7 @@
 use crate::app::event::Event;
 use crate::types::HttpScheme;
-use mc_db::{DBClient, McpDBHandler};
+use mc_db::DBClient;
+use mc_db::handler::mcp::McpDBHandler;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::HashMap;
@@ -24,6 +25,7 @@ pub struct McpServerInfo {
     pub port: String,
     pub path: String,
     pub scheme: HttpScheme,
+    pub disabled: bool,
 }
 
 impl PartialEq for McpServerInfo {
@@ -77,11 +79,16 @@ impl Cache {
                 let all_count: usize = mcp_servers.len();
 
                 for server in mcp_servers {
+                    if server.disabled {
+                        tracing::info!("mcp [{}:{}] is disabled", server.name, server.tag);
+                    }
+
                     let r_cache = cache.read().await;
 
                     let tag = &server.tag;
 
-                    let mcp_server = match parse_endpoint(server.endpoint.as_str()) {
+                    let mcp_server = match parse_endpoint(server.endpoint.as_str(), server.disabled)
+                    {
                         Ok(p) => p,
                         Err(err) => {
                             tracing::error!("Failed to parse endpoint, error: {}", err);
@@ -174,8 +181,9 @@ impl Cache {
                         mcp_name,
                         tag,
                         endpoint,
+                        disabled,
                     } => {
-                        let server = parse_endpoint(endpoint.as_str())
+                        let server = parse_endpoint(endpoint.as_str(), disabled)
                             .map_err(|err| {
                                 tracing::error!("Failed to parse endpoint, error: {}", err);
                             })
@@ -200,7 +208,7 @@ impl Cache {
         });
     }
 }
-fn parse_endpoint(endpoint: &str) -> Result<McpServerInfo, Box<dyn Error>> {
+fn parse_endpoint(endpoint: &str, disabled: bool) -> Result<McpServerInfo, Box<dyn Error>> {
     if let Some(caps) = REGEX_ENDPOINT.captures(endpoint) {
         let scheme = caps.name("scheme").map(|m| m.as_str()).unwrap_or("");
         let host = caps.name("host").map(|m| m.as_str()).unwrap_or("");
@@ -221,6 +229,7 @@ fn parse_endpoint(endpoint: &str) -> Result<McpServerInfo, Box<dyn Error>> {
             port: port.to_string(),
             path: path.to_string(),
             scheme: HttpScheme::from_str(scheme)?,
+            disabled,
         })
     } else {
         Err(format!("Failed to parse endpoint {endpoint}").into())

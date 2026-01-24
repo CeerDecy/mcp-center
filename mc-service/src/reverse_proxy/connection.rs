@@ -88,6 +88,16 @@ impl Service<Request<Body>> for ConnectionService {
                 }
             };
 
+            if mcp_server.disabled {
+                tracing::error!("mcp server [{}:{}] is disabled", name, tag);
+                return Ok(build_error_stream_response(
+                    tx,
+                    stream,
+                    format!("mcp server [{}:{}] is disabled", name, tag),
+                    StatusCode::BAD_REQUEST,
+                ));
+            }
+
             *req.uri_mut() = match Uri::try_from(&mcp_server.endpoint) {
                 Ok(uri) => uri,
                 Err(err) => {

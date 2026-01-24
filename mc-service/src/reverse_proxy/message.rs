@@ -58,7 +58,7 @@ impl Service<Request<Body>> for MessageService {
             let path = req.uri().path();
             let path_query = req.uri().query();
 
-            tracing::info!("path ===> {path}");
+            // tracing::info!("path ===> {path}");
             // tracing::info!("path_query ===> {path_query}");
 
             let (name, tag, sub_path) = match parse_message_router(path) {
@@ -243,6 +243,7 @@ mod tests {
             host: "example.com".to_string(),
             port: "".to_string(),
             path: "".to_string(),
+            disabled: false,
         };
 
         struct TestCase {

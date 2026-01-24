@@ -34,7 +34,7 @@ impl Display for CreateFrom {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct McpServers {
     pub id: Uuid,
     pub name: String,

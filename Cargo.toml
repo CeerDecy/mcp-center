@@ -1,5 +1,5 @@
 [workspace]
-members = ["mc-db", "mc-booter", "mc-common", "mc-loader", "mc-service", "mc-registry", "mc-token"]
+members = ["mc-db", "mc-booter", "mc-common", "mc-loader", "mc-service", "mc-registry", "mc-token", "mc-settings"]
 
 [workspace.package]
 version = "0.1.0"
@@ -7,3 +7,8 @@ edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/nautilus-ops/mcp-center"
 rust-version = "1.89.0"
+
+[workspace.dependencies]
+tracing = "0.1.44"
+tokio = { version = "1.46.1", features = ["full", "tracing"] }
+axum = {version = "0.8.4"}

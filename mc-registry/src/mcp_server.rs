@@ -1,5 +1,5 @@
 use axum::Json;
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use mc_common::app::event::Event;
 use mc_common::app::{AppState, Response};
@@ -120,6 +120,16 @@ pub struct McpRegisterRequest {
     pub extra: Option<serde_json::Value>,
 }
 
+#[derive(Deserialize, Serialize, Clone)]
+pub struct McpUpdateRequest {
+    pub tag: String,
+    pub endpoint: Option<String>,
+    pub transport_type: String,
+    pub description: String,
+    pub extra: Option<serde_json::Value>,
+    pub disabled: Option<bool>,
+}
+
 pub async fn register_mcp_server(
     State(state): State<AppState>,
     Json(server): Json<McpRegisterRequest>,
@@ -167,6 +177,7 @@ pub async fn register_mcp_server(
             mcp_name: server.name.clone(),
             tag: server.tag.clone(),
             endpoint: server.endpoint.clone(),
+            disabled: false,
         }) {
             tracing::error!("Failed to send event {}", err);
         }
@@ -180,6 +191,72 @@ pub async fn register_mcp_server(
             "Internal server error".to_string(),
         )
     })?;
+
+    Ok(Json(Response::new(Some(data))))
+}
+
+pub async fn update_mcp_server(
+    State(state): State<AppState>,
+    Path(mcp_name): Path<String>,
+    Json(request): Json<McpUpdateRequest>,
+) -> Result<Json<Response>, (StatusCode, String)> {
+    let mcp_handler = match &state.handlers().mcp_handler {
+        None => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Can't get MCP handler not found".to_string(),
+            ));
+        }
+        Some(handler) => handler,
+    };
+
+    let endpoint = request
+        .endpoint
+        .as_deref()
+        .filter(|value| !value.is_empty());
+
+    let res = mcp_handler
+        .update_by_name_tag(
+            &mcp_name,
+            &request.tag,
+            endpoint,
+            &request.transport_type,
+            &request.description,
+            &request.extra,
+            request.disabled,
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update mcp server {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to update mcp server".to_string(),
+            )
+        })?;
+
+    let Some(server) = res else {
+        return Err((StatusCode::NOT_FOUND, "MCP server not found".to_string()));
+    };
+
+    let data = serde_json::to_value(server.clone()).map_err(|e| {
+        tracing::error!("Failed to parse mcp servers {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        )
+    })?;
+
+    tokio::task::spawn(async move {
+        if let Err(err) = state.event_sender.send(Event::CreateOrUpdate {
+            mcp_name: mcp_name.clone(),
+            tag: request.tag,
+            endpoint: server.endpoint,
+            disabled: server.disabled,
+        }) {
+            tracing::error!("Failed to send event {}", err);
+        }
+        tracing::info!("MCP server {} updated", mcp_name);
+    });
 
     Ok(Json(Response::new(Some(data))))
 }

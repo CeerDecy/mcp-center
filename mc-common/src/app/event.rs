@@ -6,5 +6,6 @@ pub enum Event {
         mcp_name: String,
         tag: String,
         endpoint: String,
+        disabled: bool,
     },
 }

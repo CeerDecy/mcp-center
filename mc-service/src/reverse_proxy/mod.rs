@@ -41,6 +41,10 @@ pub fn register_router<S: Clone + Send + Sync + 'static>(
     cache: Arc<Cache>,
 ) -> router::RouterHandler<S> {
     Box::new(move |router: Router<S>| {
+        tracing::info!("Proxy router");
+        tracing::info!("ALL\t/proxy/connect/{{name}}/{{tag}}");
+        tracing::info!("ALL\t/proxy/message/{{name}}/{{tag}}/{{*subPath}}");
+
         router
             .route_service(
                 "/proxy/connect/{name}/{tag}",

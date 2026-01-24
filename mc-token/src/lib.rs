@@ -5,5 +5,10 @@ use mc_common::router;
 mod token;
 
 pub fn register_router() -> router::RouterHandler<AppState> {
-    Box::new(|router| router.route("/api/user/admin/login", post(token::admin_login)))
+    Box::new(|router| {
+        tracing::info!("Authorization Router");
+        tracing::info!("POST\t/api/user/admin/login");
+
+        router.route("/api/user/admin/login", post(token::admin_login))
+    })
 }

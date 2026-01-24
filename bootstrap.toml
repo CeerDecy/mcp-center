@@ -1,5 +1,5 @@
 [mcp_center]
-http_port = "${HTTP_PORT:5432}"
+http_port = "${HTTP_PORT:8822}"
 admin_token = "${MCP_ADMIN_TOKEN}"
 
 [mcp_registry]
@@ -9,9 +9,9 @@ token = "${EXTERNAL_AUTHORIZATION}"
 mcp_definition_path = "${SERVER_DEFINITION_PATH:mcp_servers.toml}"
 
 [postgres]
-host = "${POSTGRES_HOST}"
+host = "${POSTGRES_HOST:localhost}"
 port = "${POSTGRES_PORT:5432}"
 username = "${POSTGRES_USERNAME:postgres}"
 password = "${POSTGRES_PASSWORD:postgres}"
-database = "${POSTGRES_DATABASE:mcp}"
+database = "${POSTGRES_DATABASE:mcp_center}"
 max_connection = "${POSTGRES_MAX_CONNECTION:5}"

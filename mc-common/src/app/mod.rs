@@ -11,6 +11,8 @@ use mc_db::DBClient;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast::Sender;
+use mc_db::handler::mcp::McpDBHandler;
+use mc_db::handler::setting::SystemSettingsDBHandler;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -43,8 +45,8 @@ impl AppState {
 
 #[derive(Clone)]
 pub struct HandlerManager {
-    pub mcp_handler: Option<Arc<mc_db::McpDBHandler>>,
-    pub system_settings_handler: Option<Arc<mc_db::SystemSettingsDBHandler>>,
+    pub mcp_handler: Option<Arc<McpDBHandler>>,
+    pub system_settings_handler: Option<Arc<SystemSettingsDBHandler>>,
     pub api_keys_handler: Option<Arc<mc_db::ApiKeyDBHandler>>,
     db: Arc<DBClient>,
 }
@@ -60,11 +62,11 @@ impl HandlerManager {
     }
 
     pub fn with_mcp_handler(mut self) -> Self {
-        self.mcp_handler = Some(Arc::new(mc_db::McpDBHandler::new(self.db.clone())));
+        self.mcp_handler = Some(Arc::new(McpDBHandler::new(self.db.clone())));
         self
     }
     pub fn with_system_settings_handler(mut self) -> Self {
-        self.system_settings_handler = Some(Arc::new(mc_db::SystemSettingsDBHandler::new(
+        self.system_settings_handler = Some(Arc::new(SystemSettingsDBHandler::new(
             self.db.clone(),
         )));
         self

@@ -75,6 +75,7 @@ impl McpCenterServer {
                 state.mcp_cache.clone(),
             ))
             .with_register(mc_registry::register_router())
+            .with_register(mc_settings::register_router())
             .with_register(mc_token::register_router())
             .with_layer(layer_authorization(self.config.clone(), state.clone()));
 

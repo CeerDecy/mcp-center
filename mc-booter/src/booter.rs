@@ -10,7 +10,7 @@ use tokio::runtime::Builder;
 use tokio::signal::unix::{SignalKind, signal};
 use tokio_util::sync::CancellationToken;
 
-const DEFAULT_BOOTSTRAP_FILEPATH: &str = "/etc/nautilus/bootstrap.toml";
+const DEFAULT_BOOTSTRAP_FILEPATH: &str = "./bootstrap.toml";
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -57,8 +57,7 @@ impl Booter {
         let rt = Builder::new_multi_thread()
             .worker_threads(num_cpus::get())
             .enable_all()
-            .build()
-            .unwrap();
+            .build()?;
 
         let cancellation_token = CancellationToken::new();
         let shutdown_token = cancellation_token.clone();
